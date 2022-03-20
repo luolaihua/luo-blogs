@@ -71,6 +71,16 @@ gitee地址：https://gitee.com
 
 全部配置完成后，即可进行图片上传测试。
 
+## 注意
+
+截止至2022-3-20，在新版本的PicGo中，其图床设置中以及没有默认的Gitee图床：
+
+![image-20220320154000682](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/image-20220320154000682.png)
+
+所以需要在插件设置中搜索gitee的插件，并安装（需要提前安装node.js）：
+
+![image-20220320154137580](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/image-20220320154137580.png)
+
 # 运行测试
 
 在PicGo的上传区中上传图片：
@@ -96,6 +106,10 @@ gitee地址：https://gitee.com
 参考文章：
 
 https://zhuanlan.zhihu.com/p/355919389
+
+https://blog.csdn.net/shdxhsq/article/details/119246183
+
+https://zhuanlan.zhihu.com/p/178938338
 
 https://blog.csdn.net/shdxhsq/article/details/119246183
 
