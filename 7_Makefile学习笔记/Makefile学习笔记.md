@@ -1,6 +1,12 @@
 # Makefile学习笔记
+- [Makefile学习笔记](#makefile学习笔记)
+- [一，Makefile 总述](#一makefile-总述)
+  - [1，Makefile的组成](#1makefile的组成)
+  - [2，Makefile的文件名](#2makefile的文件名)
+  - [3，引用其他Makefile](#3引用其他makefile)
 
-# 一，Makefile总述
+
+# 一，Makefile 总述
 
 ## 1，Makefile的组成
 
@@ -29,6 +35,3 @@ make默认的文件名有三个，并且它们的识别顺序如下：
 ## 3，引用其他Makefile
 
 类似于C语言中的“#include”，Makefile中可以使用“include”关键字将别的Makefile包含进来，  
-
-
-
