@@ -86,6 +86,9 @@ include头文件非标准库中存在的也不是在当前文件夹下的，需�
 
 以上两种方法相比较，第一中方法编译时需要所有文件重新编译，而第二种方法可以只重新编译修改的文件，未修改的文件不用重新编译。
 
+![](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs/20220405152802.png)
+
+
 参考链接：
 
 https://www.cnblogs.com/ibyte/p/5828445.html
