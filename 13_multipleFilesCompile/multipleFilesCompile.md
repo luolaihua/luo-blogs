@@ -1,7 +1,4 @@
-@[TOC](目录)
 
-- [ILP32和LP64](#ilp32和lp64)
-- [Volitile关键字](#volitile关键字)
 - [多文件编译链接与.h头文件包含规则](#多文件编译链接与h头文件包含规则)
   - [extern 和 static 关键字](#extern-和-static-关键字)
   - [使用头文件封装](#使用头文件封装)
@@ -10,42 +7,11 @@
     - [三，头文件重复包含](#三头文件重复包含)
     - [四，为什么要包含头文件而不是 .c 文件](#四为什么要包含头文件而不是-c-文件)
 
-# ILP32和LP64
-![](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs/20220404182622.png)
-
-- **ILP32**这个缩写的意思是 int （I）、 long （L）和指针（P）类型都占32位，通常32位计算机的C编译器采用这种规范，x86平台的 gcc 也是如此。
-- **LP64**是指 long （L）和指针占64位，通常64位计算机
-的C编译器采用这种规范。
-- 指针类型的长度总是和计算机的位数一致
-
-![](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs/20220404183037.png)
-
-```C
-int a=0;
-a = (++a)+(++a)+(++a)+(++a);
-// a = 11
-```
-
-答案应该是Undefined。a = (++a)+(++a)+(++a)+(++a); 的结果之所以是Undefined，
-因为在这个表达式中有五个Side Effect都在改变 a 的值，这些Side Effect按什么顺序发生不一定，只
-知道在整个表达式求值结束时一定都发生了。比如现在求第二个 ++a 的值，这时第一个、第三个、
-第四个 ++a 的Side Effect发生了没有， a 的值被加过几次了，这些都不确定，所以第二个 ++a 的值也
-不确定。这行代码用不同平台的不同编译器来编译结果是不同的，甚至在同一平台上用同一编译器
-的不同版本来编译也可能不同。
-
-# Volitile关键字
-
-有了 volatile 限定符，是可以防止编译器优化对设备寄存器的访问，但是对于有Cache的平台，仅仅这样还不够，还是无法防止Cache优化对设备寄存器的访问。
-
-用优化选项编译生成的指令明显效率更高，但使用不当会出错，为了避免编译器自作聪明，把不该优化的也优化了，程序员应该明确告诉编译器哪些内存单元的访问是不能优化的，在C语言中可以用 volatile 限定符修饰变量，就是告诉编译器，即使在编译时指定了优化选项，每次读这个变量仍然要老老实实从内存读取，每次写这个变量也仍然要老老实实写回内存，不能省略任何步骤。
-
-除了设备寄存器需要用 volatile 限定之外，当一个全局变量被同一进程中的多个控制流程访问时也要用 volatile 限定，比如信号处理函数和多线程。
-
 # 多文件编译链接与.h头文件包含规则
 
-如下示例程序，stack.c中定义了一个栈，以及栈的一些简单功能函数：push(),pop()以及is_empty()等。main.c为程序主函数，主要测试了栈的这些功能。
+如下示例程序，stack.c中定义了一个栈，以及栈的一些简单功能函数：push()，pop()以及is_empty()等。main.c为程序主函数，主要测试了栈的这些功能。
 
-```C
+```c
 // stack.c
 char stack[512];
 int top = -1;
@@ -65,7 +31,7 @@ int is_empty(void)
 }
 ```
 
-```C
+```c
 // main.c
 #include<stdio.h>
 int main(void)
@@ -90,7 +56,7 @@ $ gcc -c stack.c
 $ gcc main.o stack.o -o main
 ```
 但是编译成功后会报如下警告，如果未报，可添加 -Wall 参数：
-![](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs/20220406152633.png)
+![](https://img-blog.csdnimg.cn/img_convert/1af359e1814685b32da1f3a165b5f031.png)
 <pre><b>main.c:</b> In function ‘<b>main</b>’:
 <b>main.c:14:5:</b> <font color="#75507B"><b>warning: </b></font>implicit declaration of function ‘<b>push</b>’ [<font color="#75507B"><b>-Wimplicit-function-declaration</b></font>]
    14 |     <font color="#75507B"><b>push</b></font>(&apos;a&apos;);
@@ -104,10 +70,10 @@ $ gcc main.o stack.o -o main
       |                 <font color="#4E9A06">popen</font>
 </pre>
 
-警告中提到 push(),pop()以及is_empty()都是隐式声明的函数，这是因为这些函数在调用之前未经声明或者定义（或者其声明定义在其他源文件中），编译器在处理这些函数调用代码时没有找到函数原型，只好根据函数调用代码做隐式声明，进行逆推。
+警告中提到 push()，pop()以及is_empty()都是隐式声明的函数，这是因为这些函数在调用之前未经声明或者定义（或者其声明定义在其他源文件中），编译器在处理这些函数调用代码时没有找到函数原型，只好根据函数调用代码做隐式声明，进行逆推。
 
 此外，隐式声明的函数返回值类型都默认为 **int** ，再根据调用当前函数时传入的参数类型来确定函数的参数类型 ，这样函数的参数和返回值类型都确定下来了，编译器根据这些信息为函数调用生成相应的指令。因此，编译器会把这三个函数声明为：
-```C
+```c
 int push(char);
 int pop(void);
 int is_empty(void);
@@ -117,7 +83,7 @@ int is_empty(void);
 
 在这里 extern 关键字表示这个标识符具有外部链接External Linkage。push 这个标识符具有External Linkage指的是：如果把 main.c 和 stack.c 链接在一起，如果 push 在 main.c 和 stack.c 中都有声明（在 stack.c 中的声明同时也是定义），那么这些声明指的是同一个函数，链接之后是同一个 GLOBAL 符号，代表同一个地址。函数声明中的 extern 也可以省略不写，不写 extern 的函数声明也表示这个函数具有External Linkage。
 
-```C
+```c
 #include<stdio.h>
 
 //extern关键字告诉编译器，函数的定义在其他源文件中
@@ -168,7 +134,7 @@ collect2: ld returned 1 exit status
 
 在上文中提到：在函数调用之前，需要有函数的定义或者声明，否则编译器就会根据函数的调用，自己推导出隐式声明的函数声明，其中函数的返回值默认为 int ，函数参数类型根据调用的实际输入参数确定。但是随着程序的源文件逐渐增多，如果每一个功能文件中都需要调用stack.c里面的函数，则需要在各个文件中重复写函数的声明。重复性的工作应该尽量避免，我们可以写一个stack.h的头文件，将函数的声明放入，需要用到stack.c里面的函数的源文件，只需包含该头文件即可：
 
-```C
+```c
 #ifndef _STACK_H
 #define _STACK_H
 void push(char);
@@ -177,7 +143,7 @@ int is_empty(void);
 #endif
 ```
 这样在 main.c 中只需包含这个头文件就可以了，而不需要写三个函数声明：
-```C
+```c
 /* main.c */
 #include <stdio.h>
 #include "stack.h"
@@ -199,7 +165,7 @@ int main(void)
 
 包含头文件，有尖括号和双引号之分，这也是一道基础性的C语言面试问题，读者可以做如下实验，包含头文件时全使用尖括号或者双引号，看看是否可以通用：
 
-```C
+```c
 //报错
 #include<stack.h>
 #include<stdio.h>
@@ -275,7 +241,7 @@ $ gcc main.c ./stack/stack.c -o main -I ./stack/
 
 ### 三，头文件重复包含
 回到我们一开始写的头文件stack.h中，在 stack.h 中我们看到两个新的预处理指示 #ifndef STACK_H 和 #endif ，#ifndef是if not define的简写，意思是说，如果 STACK_H 这个宏没有定义过，那么就定义一个STACK_H宏，并且开始其他操作，如定义函数或变量，直到#endif这一行为止。如果在包含这个头文件时 STACK_H 这个宏已经定义过了，则直接跳过这段代码。
-```C
+```c
 #ifndef _STACK_H
 #define _STACK_H
 void push(char);
@@ -284,8 +250,7 @@ int is_empty(void);
 #endif
 ```
 这是为了解决头文件重复包含，而导致的代码冗余，命名冲突，重复定义等一系列问题。假如 main.c 包含了两次 stack.h ：
-```
-...
+```c
 #include "stack.h"
 #include "stack.h"
 int main(void)
@@ -293,7 +258,7 @@ int main(void)
 ...
 ```
 则第一次包含 stack.h 时并没有定义 STACK_H 这个宏，因此头文件的内容包含在预处理的输出结果中：
-```C
+```c
 #define STACK_H
 extern void push(char);
 extern char pop(void);
@@ -317,7 +282,7 @@ int main(void)
 ### 四，为什么要包含头文件而不是 .c 文件
 先看示例程序和编译结果，本次实验有三个源文件，stack.c中定义了栈相关功能函数，foo.c和main.c中直接使用include包含了stack.c文件，来调用其中的函数：
 
-```C
+```c
 //stack.c
 char stack[512];
 int top = -1;
@@ -336,7 +301,7 @@ int is_empty(void)
     return top == -1;
 }
 ```
-```C
+```c
 //foo.c
 #include"stack/stack.c"
 
@@ -346,7 +311,7 @@ void foo()
 }
 
 ```
-```C
+```c
 //main.c
 #include"stack/stack.c"
 #include<stdio.h>
@@ -377,7 +342,9 @@ collect2: error: ld returned 1 exit status
 
 出现了重复定义的错误。原因在于直接include源文件stack.c，相当于把stack.c中关于变量和函数的相关定义也包含了进来，就相当于 push 、 pop 、 is_empty 这三个函数在 main.c 和 foo.c 中都有定义，那么 main.c 和 foo.c 就不能链接在一起了。如果采用包含头文件的办法，则是多次声明，一次定义，这三个函数在main.c和foo.c中声明了各声明了一次，只在 stack.c 中定义了一次，最后可以把 main.c 、 stack.c 、 foo.c 链接在一起。如下图所示：
 
-![](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs/20220406210559.png)
+![](https://img-blog.csdnimg.cn/img_convert/560e908d39ae7a262c7b4b24409a52d8.png)
+
 
 参考文章：
-http://akaedu.github.io/book/
+
+> http://akaedu.github.io/book/
