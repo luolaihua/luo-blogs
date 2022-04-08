@@ -213,28 +213,201 @@ https://blog.csdn.net/luolaihua2018/article/details/123935238
 
 总结来说,函数式宏定义和真正的函数有以下不同点:
 
+### 2.1.1 宏定义与函数的不同点
+
 1. 宏定义的参数没有类型, 预处理器只负责做形式上的替换，而不做参数类型检查，所以传参时要格外小心。
-2. 调用真正函数的代码和调用函数式宏定义的代码编译生成的指令不同。
+
+2. 调用真正函数的代码和调用函数式宏定义的代码编译生成的指令不同。宏定义是简单的字符替换，每调用一次就替换一次。而函数需要进行传参和跳转，函数的调用也要编译生成传参指令和call指令。从代码量角度来讲，函数不管有多少次调用，在内存中只有一个函数体。而宏定义调用一次就有一个宏定义展开。
+
+3. 函数式的宏定义要格外要注意不能省去 **保护参数的括号** 以及**外层括号**，比如宏定义：
+
+   > #define SQUARE(X) X*X-1
+
+   它的原意是求X的平方再减一，若X = a-b，则 原始会被替换成 z = a-b*a-b-1，导致计算错误，所以原始应写成：
+
+   > #define SQUARE(X) (X)*(X)-1
+
+   事实上除了保护参数的括号，外层括号也不能省去，比如 y = SQUARE(X) * SQUARE(X)，X = a-b。在宏展开后，y = ( a-b)*( a-b)-1 * ( a-b)*( a-b)-1，和函数原意不符，导致计算错误，所以正确的写法应为：
+
+   > #define SQUARE(X) ((X)*(X)-1)
+
+   
+
+4. 调用函数时先求实参表达式的值再传给形参，如果实参表达式有副作用Side Effect，那么这些Side
+   Effect只发生一次。例如MAX(++a, ++b)，如果MAX是个真正的函数， a和b只增加一次。但如果MAX是
+   上面那样的宏定义，则要展开成k = ((++a)>(++b)?(++a):(++b))， a和b就不一定是增加一次还是两次了。  
+5. 即使实参没有Side Effect，使用函数式宏定义也往往会导致较低的代码执行效率。  
+
+尽管函数式宏定义和真正的函数相比有很多缺点，但只要小心使用还是会显著提高代码的执行效率，毕竟省去了**分配和释放栈帧、传参、传返回值**等一系列工作，因此那些简短并且被频繁调用的函数经常用函数式宏定义来代替实现。例如C标准库的很多函数都提供两种实现，一种是真正的函数实现，一种是宏定义实现。  
+
+#  3 内联函数（C99）
+
+C99引入一个新关键字inline，用于定义内联函数（inline function）。通常函数的调用都有一定的开销，因为函数的调用包括建立调用、传递参数、跳转到函数代码并返回。内联函数就是**以空间换时间**，使函数的调用更加快捷。
+标准规定：**具有内部链接的函数可以成为内联函数**，还规定了**内联函数的定义与调用该函数的代码必须在同一个文件中。**因此最简单的办法是使用**inline**和**static**修饰。通常，内联函数应定义在首次使用它的文件中，所以内联函数也相当于函数原型。
+
+关于内联函数的细节描述，可以参考博文：[和宏一样快的内联函数（ An Inline Function is As Fast As a Macro）](https://blog.csdn.net/luolaihua2018/article/details/124044078?spm=1001.2014.3001.5501)
+
+如下示例程序：
+
+```c
+#include<stdio.h>
+
+static inline int MAX(int a, int b)
+{
+	return a > b ? a : b;
+}
+int a[] = {19, 3, 5, 2, 1, 0, 8, 7, 6, 4 };
+int max(int n)
+{
+	return n == 0 ? a[0] : MAX(a[n], max(n-1));
+}
+int main(void)
+{
+	printf("Max = %d\n",max(9));
+	return 0;
+}
+```
+
+该程序定义了一个内联函数MAX()，并定义了一个max()函数，通过递归以求出数组a中值最大的元素。此外，需要注意以下几点：
+
+1. 在日常使用内联函数时，并不建议对内联函数进行嵌套使用（递归），因为内联函数也是类似宏定义的字符串替换，嵌套使用很容易造成代码量增大和冗余。
+
+2. static 关键字不能省略，要将内联函数定义为 静态static函数，读者可以尝试将static关键字去除，
+
+   并使用 `gcc main.c -g` 命令进行编译 。编译器会报出`undefined reference to MAX`的错误，关于此错误的解析可以参考博客：[gcc编译inline函数报错：未定义的引用](https://blog.csdn.net/chenxizhan1995/article/details/103004166)
+
+对main.c进行编译后，然后反汇编：
+
+```bash
+$ gcc main.c -g
+$ objdump -dS a.out
+```
+
+在关于MAX()和max()函数的汇编部分，可以看到：
+
+```ABAP
+static inline int MAX(int a, int b)
+{
+    1149:	55                   	push   %rbp
+    114a:	48 89 e5             	mov    %rsp,%rbp
+    114d:	89 7d fc             	mov    %edi,-0x4(%rbp)
+    1150:	89 75 f8             	mov    %esi,-0x8(%rbp)
+	return a > b ? a : b;
+    1153:	8b 45 fc             	mov    -0x4(%rbp),%eax
+    1156:	39 45 f8             	cmp    %eax,-0x8(%rbp)
+    1159:	0f 4d 45 f8          	cmovge -0x8(%rbp),%eax
+}
+    115d:	5d                   	pop    %rbp
+    115e:	c3                   	retq   
+
+
+int max(int n)
+{
+    115f:	f3 0f 1e fa          	endbr64 
+    1163:	55                   	push   %rbp
+    1164:	48 89 e5             	mov    %rsp,%rbp
+    1167:	48 83 ec 10          	sub    $0x10,%rsp
+    116b:	89 7d fc             	mov    %edi,-0x4(%rbp)
+	return n == 0 ? a[0] : MAX(a[n], max(n-1));
+    116e:	83 7d fc 00          	cmpl   $0x0,-0x4(%rbp)
+    1172:	75 08                	jne    117c <max+0x1d>
+    1174:	8b 05 a6 2e 00 00    	mov    0x2ea6(%rip),%eax        # 4020 <a>
+    117a:	eb 2f                	jmp    11ab <max+0x4c>
+    117c:	8b 45 fc             	mov    -0x4(%rbp),%eax
+    117f:	83 e8 01             	sub    $0x1,%eax
+    1182:	89 c7                	mov    %eax,%edi
+    1184:	e8 d6 ff ff ff       	callq  115f <max>
+    1189:	89 c2                	mov    %eax,%edx
+    118b:	8b 45 fc             	mov    -0x4(%rbp),%eax
+    118e:	48 98                	cltq   
+    1190:	48 8d 0c 85 00 00 00 	lea    0x0(,%rax,4),%rcx
+    1197:	00 
+    1198:	48 8d 05 81 2e 00 00 	lea    0x2e81(%rip),%rax        # 4020 <a>
+    119f:	8b 04 01             	mov    (%rcx,%rax,1),%eax
+    11a2:	89 d6                	mov    %edx,%esi
+    11a4:	89 c7                	mov    %eax,%edi
+    11a6:	e8 9e ff ff ff       	callq  1149 <MAX>
+}
+    11ab:	c9                   	leaveq 
+    11ac:	c3                   	retq  
+```
+
+在倒数第四行可以看到MAX函数的调用call命令：`11a6:	e8 9e ff ff ff       	callq  1149 <MAX>`，说明MAX()函数此时是作为普通函数使用的。
+
+如果使用`-O`选项指定GCC进行优化编译，然后反汇编：  
+
+```bash
+$ gcc main.c -g -O
+$ objdump -dS a.out
+```
+
+可以看到max()函数的汇编代码，但是没有MAX()函数的汇编：
+
+```
+int max(int n)
+{
+    1149:	f3 0f 1e fa          	endbr64 
+	return n == 0 ? a[0] : MAX(a[n], max(n-1));
+    114d:	85 ff                	test   %edi,%edi
+    114f:	75 07                	jne    1158 <max+0xf>
+    1151:	8b 05 c9 2e 00 00    	mov    0x2ec9(%rip),%eax        # 4020 <a>
+}
+    1157:	c3                   	retq   
+{
+    1158:	53                   	push   %rbx
+    1159:	89 fb                	mov    %edi,%ebx
+	return n == 0 ? a[0] : MAX(a[n], max(n-1));
+    115b:	8d 7f ff             	lea    -0x1(%rdi),%edi
+    115e:	e8 e6 ff ff ff       	callq  1149 <max>
+    1163:	48 8d 15 b6 2e 00 00 	lea    0x2eb6(%rip),%rdx        # 4020 <a>
+    116a:	48 63 db             	movslq %ebx,%rbx
+	return a > b ? a : b;
+    116d:	39 04 9a             	cmp    %eax,(%rdx,%rbx,4)
+    1170:	0f 4d 04 9a          	cmovge (%rdx,%rbx,4),%eax
+}
+    1174:	5b                   	pop    %rbx
+    1175:	c3                   	retq   
+```
+
+可以看到，并没有call指令调用MAX函数， MAX函数的指令是内联在max函数中的，由于源代码和指令的次序无法对应， max和MAX函数的源代码也交错在一起显示。  因为MAX()函数已经嵌入到max()函数里面了，此时编译器把MAX()函数当作内联函数，所以没有给它分配单独的代码空间，所以也无法获得该内联函数的地址。
+
+关于C语言的内联函数的使用总结，有如下几点：
+
+- 由于并未给内联函数预留单独的代码块，所以无法获得内联函数的地址，另外，内联函数无法在调试器中显示。
+- 由于内联函数具有内部链接，所以在多个文件中定义同一个内联函数不会产生什么影响。
+- 如果多个文件都需要使用同一个内联函数，可以将它**定义**在h头文件中。
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+# 4  #、##运算符和可变参数
 
 
 
 
 #  文件包含：#include
 当预处理器发现#include时，会查看后面的文件名，并把文件的内容包含到当前文件中，即替换源文件中的#include指令。
+
+```c
+#include<stdio.h>
+
+inline int MAX(int a, int b)
+{
+	return a > b ? a : b;
+}
+int a[] = { 9, 3, 5, 2, 1, 0, 8, 7, 6, 4 };
+int max(int n)
+{
+	return n == 0 ? a[0] : MAX(a[n], max(n-1));
+}
+int main(void)
+{
+	max(9);
+	return 0;
+}
+```
+
+
+
 #  #undef指令
 #undef指令用于取消已定义的#define指令
 假如有如下定义：
@@ -366,25 +539,4 @@ int main(void)
 	
 */
 ```
-
-#  内联函数（C99）
-通常函数的调用都有一定的开销，因为函数的调用包括建立调用、传递参数、跳转到函数代码并返回。内联函数就是**以空间换时间**，使函数的调用更加快捷。
-标准规定：**具有内部链接的函数可以成为内联函数**，还规定了**内联函数的定义与调用该函数的代码必须在同一个文件中。**因此最简单的办法是使用**inline**和**static**修饰。通常，内联函数应定义在首次使用它的文件中，所以内联函数也相当于函数原型。
-```c
-#include<stdio.h>
-inline static void test()
-{
-	puts("test!");
-}
-int main()
-{
-	...
-	test();
-	...
-}
-```
-- 由于并未给内联函数预留单独的代码块，所以无法获得内联函数的地址，另外，内联函数无法在调试器中显示。
-- 由于内联函数具有内部链接，所以在多个文件中定义同一个内联函数不会产生什么影响。
-- 如果多个文件都需要使用同一个内联函数，可以将它定义在h头文件中。
-
 
