@@ -1,25 +1,6 @@
 # C/C++预处理过程的详细梳理（宏定义+条件预处理+其它预处理）
 
-- [C/C++预处理过程的详细梳理（宏定义+条件预处理+其它预处理）](#cc预处理过程的详细梳理宏定义条件预处理其它预处理)
-- [1 预处理的步骤](#1-预处理的步骤)
-	- [1.1 把源代码中出现的字符映射到源字符集](#11-把源代码中出现的字符映射到源字符集)
-	- [1.2 将多个**物理行**替换成一个**逻辑行**](#12-将多个物理行替换成一个逻辑行)
-	- [1.3 将注释替换为空格](#13-将注释替换为空格)
-	- [1.4 将**逻辑行**划分成预处理记号（Token）和空白字符](#14-将逻辑行划分成预处理记号token和空白字符)
-	- [1.5 宏展开，处理#include预处理指示](#15-宏展开处理include预处理指示)
-	- [1.6 将转义序列替换](#16-将转义序列替换)
-	- [1.7 连接相邻字符串](#17-连接相邻字符串)
-	- [1.8 丢弃空白字符，如空格和Tab等](#18-丢弃空白字符如空格和tab等)
-- [2 宏定义](#2-宏定义)
-	- [2.1 变量宏定义和函数宏定义：#define](#21-变量宏定义和函数宏定义define)
-- [文件包含：#include](#文件包含include)
-- [#undef指令](#undef指令)
-- [条件编译](#条件编译)
-- [预定义宏](#预定义宏)
-- [泛型选择](#泛型选择)
-- [内联函数（C99）](#内联函数c99)
-
-
+@[TOC](目录)
 
 C预处理器在程序执行之前查看程序，根据程序中的预处理指令，预处理器把符号缩写替换成其表示的内容。基本上它的工作就是**文本替换**。
 
@@ -381,34 +362,263 @@ int max(int n)
 
 # 4  #、##运算符和可变参数
 
+## 4.1 `#`号运算符：创建字符串
 
-
-
-#  文件包含：#include
-当预处理器发现#include时，会查看后面的文件名，并把文件的内容包含到当前文件中，即替换源文件中的#include指令。
+在函数式宏定义中， `#`运算符用于创建字符串， `#`运算符后面应该跟一个形参（中间可以有空格或Tab），例如：  
 
 ```c
+//define.c
 #include<stdio.h>
+#define STR(s) #   s
+#define STR2(str) #str
+int main()
+{
+    printf(STR(hello       world \n));
+    printf(STR2(strncmp("ab\"c\0d", "abc", '\4"') == 0) STR(: @\n));
+    return 0;
 
-inline int MAX(int a, int b)
-{
-	return a > b ? a : b;
-}
-int a[] = { 9, 3, 5, 2, 1, 0, 8, 7, 6, 4 };
-int max(int n)
-{
-	return n == 0 ? a[0] : MAX(a[n], max(n-1));
-}
-int main(void)
-{
-	max(9);
-	return 0;
 }
 ```
 
+使用cpp指令将define.c文件进行预处理：`cpp define.c`，可以看到：
+
+```c
+# 11 "define.c"
+int main()
+{
+    printf("hello world \n");
+    printf("strncmp(\"ab\\\"c\\0d\", \"abc\", '\\4\"') == 0" ": @\n");
+    return 0;
+
+}
+```
+
+注意，如果实参中包含字符常量或字符串，则宏展开之后字符串的界定符`"`要替换成 `\"`，字符常量或字符
+串中的`\`和`"`字符要替换成`\\`和`\"`。  最后打印出的结果为：
+
+<pre>$ gcc define.c
+$ ./a.out 
+hello world 
+strncmp(&quot;ab\&quot;c\0d&quot;, &quot;abc&quot;, &apos;\4&quot;&apos;) == 0: @
+</pre>
+
+## 4.2 `##`号运算符：连接两个预处理Token
+
+在宏定义中可以用##运算符把前后两个预处理Token连接成一个预处理Token，和#运算符不同， ##运算符不仅限于函数式宏定义，变量式宏定义也可以用。例如：  
+
+```c
+//预处理粘合剂：##运算符 
+#define XNAME(n) x ## n
+#define PRINT(f) print ## f
+#define PRINT_XN(n) printf("x" #n " = %d\n", x ## n); 
+int main()
+{
+    int XNAME(3) = 666;
+    PRINT(f)("Hello\n");
+    PRINT_XN(3)
+    return 0;
+}
+
+```
+
+使用命令 `cpp define.c`查看经过预处理之后的代码：
+
+```c
+int main()
+{
+    int x3 = 666;
+    printf("Hello\n");
+    printf("x" "3" " = %d\n", x3);
+    return 0;
+}
+
+```
+
+使用gcc编译并运行：
+
+```bash
+$ gcc define.c
+$ ./a.out 
+Hello
+x3 = 666
+
+```
+
+如果宏定义里全是  `#`号呢，如下示例：
+
+```c
+//会被编译器看做是两个#：##
+#define H # ## #
+// 预处理报错：
+#define HH ####
+```
+
+中间的##是运算符，宏展开时前后两个#号被这个运算符连接在一起。注意中间的两个空格是不可少的，如果写成####，会被划分成##和##两个Token，而根据定义##运算符用于连接前后两个预处理Token，不能出现在宏定义的开头或末尾，所以会报错：
+
+<pre># 8 &quot;define.c&quot; 2
+<b>define.c:17:9:</b> <font color="#CC0000"><b>error: </b></font>&apos;##&apos; cannot appear at either end of a macro expansion
+   17 | #define <font color="#CC0000"><b>HH</b></font> ####
+      |         <font color="#CC0000"><b>^~</b></font>
+</pre>
+
+## 4.3  `…`：宏定义的可变参数`__VA_ARGS__`  
+
+C语言中的 `printf()` 和 `scanf()` 函数其输入的参数可变，宏定义的参数也可以带可变的参数。它主要使用 `…`与`__VA_ARGS__`配合使用，示例代码如下：
+
+```c
+#define showlist(...) printf(#__VA_ARGS__)
+#define report(test,...) ((test) ? printf(#test) : printf(__VA_ARGS__))
+
+//no param
+showlist();
+// multi params
+showlist(The first, second, and third items.);
+
+//no param
+report();
+// multi params
+report(x>y, "x is %d but y is %d", x, y);
+```
+
+第一个`showlist`宏定义内可以输入可变的参数，并且通过`#`号将输入的所有可变参数转成字符串。第二个宏定义`report`指定了第一个参数为test，之后的参数为可变参数。将上述代码进行预处理可得：
+
+```c
+printf("");
+
+printf("The first, second, and third items.");
 
 
-#  #undef指令
+(() ? printf("") : printf());
+
+((x>y) ? printf("x>y") : printf("x is %d but y is %d", x, y));
+
+```
+
+在宏定义中，可变参数的部分用`__VA_ARGS__`表示，实参中对应`...`的几个参数可以看成一个参数替
+换到宏定义中`__VA_ARGS__`所在的地方。调用函数式宏定义允许传空参数，这一点和函数调用不同，读者可以通过下面几个例子理解空参数的用法。  
+
+```c
+#define FOO() foo
+FOO() //foo  
+FOO(2) //报错，不允许传参数
+```
+
+预处理之后变成foo。 FOO在定义时不带参数，在调用时也不允许传参数给它，否则将会报错：  
+
+<pre><b>define.c:35:6:</b> <font color="#CC0000"><b>error: </b></font>macro &quot;FOO&quot; passed 1 arguments, but takes just 0
+   35 | FOO(2<font color="#CC0000"><b>)</b></font>
+      |      <font color="#CC0000"><b>^</b></font>
+<b>define.c:32:</b> <font color="#06989A"><b>note: </b></font>macro &quot;FOO&quot; defined here
+   32 | #define FOO() foo
+      | 
+</pre>
+
+反之，如果宏定义中带了参数，在调用时必须传参数给它，如果不传参数则表示传了一个空参数。  
+
+```c
+#define FOO(a) foo##a
+FOO(bar)  
+FOO()
+```
+
+预处理之后变成：  
+
+```c
+foobar
+foo
+```
+
+如果宏定义中带了多个参数，比如：
+
+```c
+#define FOO(a,b,c) x##a##b##c
+
+FOO() //一个参数都不传，报错
+FOO(1,2,3)
+FOO(1,,3)
+FOO(,,3)
+```
+
+它预处理后的结果为：
+
+```c
+FOO
+x123
+x13
+x3
+```
+
+FOO在定义时带三个参数，在调用时也必须传三个参数给它，空参数的位置可以空着，但必须给够
+三个参数， FOO(1,2)这样的调用是错误的。
+
+再看一个示例：
+
+```c
+#define FOO(a, ...) a##__VA_ARGS__
+FOO(1)
+FOO(1,2,3,)
+```
+
+预处理之后变成：  
+
+```c
+1
+12,3,
+```
+
+FOO(1)这个调用相当于可变参数部分传了一个空参数， FOO(1,2,3,)这个调用相当于可变参数部分传
+了三个参数，第三个是空参数。  
+
+# 5 宏展开的顺序（不会递归展开）
+
+虽然宏展开只是简单的字符替换，但是在宏展开中也要注意展开的顺序以及可能需要做多次替换。如下示例：
+
+```c
+#define sh(x) printf("n" #x "=%d, or %d\n",n##x,alt[x])
+#define sub_z 26
+sh(sub_z)
+```
+
+sh(sub_z)要用sh(x)这个宏定义来展开，形参x对应的实参是sub_z，替换过程如下：  
+
+1. `#x`要替换成字符串`"sub_z"`。
+2. `n##x`要替换成`nsub_z`。
+3. 除了带`#`和`##`运算符的参数之外，其它参数在替换之前要对实参本身做充分的展开，所以应该先把sub_z展开成26再替换到alt[x]中x的位置。   
+4. 现在展开成了printf("n" "sub_z" "=%d, or %d\n",nsub_z,alt[26])，所有参数都替换完
+   了，这时编译器会再扫描一遍，再找出可以展开的宏定义来展开，假设nsub_z或alt是变量式
+   宏定义，这时会进一步展开。  
+
+最后结果为： 
+
+```
+printf("n" "sub_z" "=%d, or %d\n",nsub_z,alt[26])
+```
+
+还有一个比较复杂的例子：
+
+```c
+#define x 3
+#define f(a) f(x * (a))
+#undef x
+#define x 2
+#define g f
+#define t(a) a
+t(t(g)(0) + t)(1);
+```
+
+展开的步骤是：
+
+1. 先把`g`展开成`f`再替换到`#define t(a) a`中，得到`t(f(0) + t)(1)`;。
+2. 根据`#define f(a) f(x * (a))`，得到`t(f(x * (0)) + t)(1)`;。
+3. 把`x`替换成`2`，得到`t(f(2 * (0)) + t)(1)`;。注意，一开始定义`x`为`3`，但是后来用`#undef x`取消了`x`的定义，又重新定义`x`为`2`。当处理到`t(t(g)(0) + t)(1)`；这一行代码时`x`已经定义成2了，所以用2来替换。还要注意一点，现在得到的`t(f(2 * (0)) + t)(1)`；中仍然有f，但不能再次根据`#define f(a) f(x * (a))`展开了， `f(2 * (0))`就是由展开`f(0)`得到的，这里面再遇到`f`就不展开了，**这样规定可以避免无穷展开（类似于无穷递归）**，因此我们可以放心地使用递归定义，例如`#define a a[0]`， `#define a a.member`等。
+4. 根据`#define t(a) a`，最终展开成`f(2 * (0)) + t(1)`;。这时不能再展开`t(1)`了，因为这里
+   的`t`就是由展开`t(f(2 * (0)) + t)`得到的，所以不能再展开了。
+
+#  文件包含：#include
+
+当预处理器发现#include时，会查看后面的文件名，并把文件的内容包含到当前文件中，即替换源文件中的#include指令。
+
+#  6 #undef指令
 #undef指令用于取消已定义的#define指令
 假如有如下定义：
 ```c
@@ -420,13 +630,13 @@ int main(void)
 ```
 将移除上面的定义，可以将LIMIT重新定义一个新值，即使原来没有定义LIMIT，取消LIMIT定义仍然有效，如果想使用一个名称，又不确定之前是否用过，为了安全起见，可以使用#undef指令取消改名字的定义。
 
-#  条件编译
+#  7 条件编译
 可以使用这些指令告诉编译器根据编译时的条件执行或忽略代码块。
 
 ```c
 #include<stdio.h>
 #define TEST 
-#ifdef TEST        //如果已经用#define定义了MAVIS，则执行下面指令 
+#ifdef TEST        //如果已经用#define定义了TEST，则执行下面指令 
 	#include "string.h"
 	#define NUM 999
 #else              //否则 
@@ -472,7 +682,9 @@ int main(void)
 	*/
 }
 ```
-#  预定义宏
+#  8 预定义宏
+
+C99引入一个特殊的标识符`__func__`支持这一功能。这个标识符应该是一个变量名而不是宏定义，不属于预处理的范畴，但它的作用和`__FILE__、 __LINE__`类似：
 
 ```c
 #include<stdio.h>
@@ -507,7 +719,7 @@ void why_me(){
 	This is line 20
 */
 ```
-#  泛型选择
+#  9 泛型选择
 在程序设计中，**泛型编程**指那些没有特定类型，但一旦指定一种类型，既可以转换成指定类型的代码。C++在模板中可以创建泛型算法，然后编译器根据指定的类型自动使用实例化代码。C11新增了一种表达式，叫作**泛型选择表达式**，可根据表达式的类型选择一个值。
 ```c
 -Generic(x, int: 0,float: 1, double: 2, default: 3)
