@@ -1,5 +1,7 @@
 # Linux下使用gnome-terminal命令一键开启工作环境
 
+[TOC]
+
 # 前言
 
 笔者的主力开发环境为Linux，工作中总会在不同路径下打开多个终端窗口（terminal），以及开启一些工具软件，每当一关机或者重启，又得重新一个一个开启工具软件，并且又要在特定的工作目录下打开之前被关闭的终端窗口。于是想着编写一个脚本，每次开机后运行，即可自动在指定工作目录下打开终端，以及开启一些软件。本文主要用到的指令为`gnome-terminal`。
@@ -192,7 +194,7 @@ NAME
 
 ## 从配置文件中恢复终端
 
-值得一提的是，gnome目前主要有gnome2和gnome3两个版本，两个版本直接还是有点差异的，比如关于窗口的配置文件选项，在gnome2中：
+值得一提的是，gnome目前主要有gnome2和gnome3两个版本，两个版本之间还是有点差异的，比如关于窗口的配置文件选项，在gnome2中：
 
 ![gnome2](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220514204246201.png)
 
@@ -217,7 +219,7 @@ FacttoryEnabled=true
 #窗口配置，Windows0和Window1是要打开的窗口名字
 Windows=Windows0;Window1;
 
-#Windows0窗口配值
+#Windows0窗口配置
 [Windows0]
 Menubarvisible=true
 Maximized=true
@@ -228,7 +230,7 @@ Geometry=237x52+O+26
 #选项卡名字和数量可以自己设置
 Terminals=Terminal1;Terminal2;Terminal3;
 
-#Windows0下的Terminal1窗口配值
+#Windows0下的Terminal1窗口配置
 [Terminal1]
 #打开Terminal1后要运行的命令，此处为运行一个test.sh的脚本
 Command='/bin/sh' '-c' './test.sh'' && exec $SHELL -l'
@@ -303,8 +305,8 @@ gnome-terminal --window --working-directory=${dir1} --title='dir1' --command="ba
 
 参考链接：
 
-https://www.systutorials.com/docs/linux/man/1-gnome-terminal/
-
-http://manpages.ubuntu.com/manpages/jammy/en/man1/gnome-terminal.1.html
-
-http://www.linux-commands-examples.com/gnome-terminal
+> https://www.systutorials.com/docs/linux/man/1-gnome-terminal/
+>
+> http://manpages.ubuntu.com/manpages/jammy/en/man1/gnome-terminal.1.html
+>
+> http://www.linux-commands-examples.com/gnome-terminal
