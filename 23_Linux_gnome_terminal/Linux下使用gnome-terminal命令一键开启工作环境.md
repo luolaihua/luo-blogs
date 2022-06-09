@@ -276,11 +276,19 @@ Height=52
 
 在窗口配置文件中，可以设置一次性打开多少个终端窗口，每个终端窗口下终端选项卡的数量，以及打开终端需要运行的命令和工作目录。需要注意的是，命令的设置需要使用 `Command='/bin/sh' '-c' 'your command'' && exec $SHELL -l'`的形式，`your command`为用户自己设置的命令，如果不想设置某个属性，直接将其注释或删除即可。
 
+### 使用方法
+
+将上述配置文件复制到自己的Linux环境中，保存的格式可以任取，比如 `t.cfg`，然后修改其中关于 `Window`和 `Terminal`的属性，比如工作目录 `WorkingDirectory` 和需要执行的指令 `Command`。
+
+然后运行指令：`gnome-terminal --load-config=t.cfg`，将修改好的配置文件加载，即可打开配置好的终端窗口：
+
+![image-20220515105631255](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220515105631255.png)
+
 ## 使用shell脚本恢复终端
 
 知道了`gnome-terminal`的使用方法，读者也可以自己编一个shell脚本，直接配置终端窗口。
 
-比如我每次开机我想打开三个工作目录并运行一下命令（比如打开工作软件等），读者可写一个这样的脚本：
+比如我每次开机我想打开三个工作目录并运行一下命令（比如打开工作软件等），读者可写一个这样的shell脚本：
 
 ```shell
 #!/bin/bash
@@ -297,9 +305,18 @@ gnome-terminal --window --working-directory=${dir1} --title='dir1' --command="ba
 
 ```
 
-该脚本只使用了一个gnome-terminal命令，开启了一个终端窗口，终端窗口内有三个终端选项卡，每个选项卡都设置了运行不同的命令以及工作目录。
+该脚本只使用了一个gnome-terminal命令，开启了一个终端窗口，终端窗口内有三个终端选项卡，每个选项卡都设置了运行不同的命令以及工作目录。其中 `--command`选项虽然被注明已过时，但仍可使用，使用方法为：`--command="bash -c your_command;bash"`，`your_command`中即可设置自己的命令，比如 `code`是打开vscode的命令。
 
 读者可以根据此脚本配置自己的一键恢复工作环境的脚本。
+
+顺便提一句，很多Linux新手写完shell脚本发现运行不了：
+
+![image-20220515110646933](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220515110646933.png)
+
+那是因为还没有给当前这个脚本赋予 “可执行”的权限，用户可以使用 `chmod +x work.sh`命令给该脚本增加权限，然后就可以使用 `./work.sh`命令运行了。当然也可以使用以下两种方法：
+
+1. `/bin/bash work.sh`
+2. `source work.sh`
 
 
 
