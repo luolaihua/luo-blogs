@@ -48,15 +48,11 @@ Data.Dump A:0x123456
 
 在Trace32中总是以如下的窗口显示`Data.dump`的信息：
 
-![image-20220612224343142](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220612224343142.png)
+![image-20220614223010339](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220614223010339.png)
 
 比如其中修饰内存地址的 `SD`就代表“Supervisor Data ”。
 
 如果访问类型被忽略，Trace32将会使用默认的访问类型。比如直接对内存地址 `0x40080000`进行 `Data.dump`,则可以发现默认使用了 `ZSD`的访问类型进行修饰，关于 `ZSD`代表何种类型，将在下文中解释。
-
-![image-20220612225150494](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220612225150494.png)
-
-![image-20220612223454360](https://gitee.com/luo-san-pao/luo-blog-images/raw/master/imgs_pc0/image-20220612223454360.png)
 
 # 处理器访问类型Access Classes for Core Resources  
 
@@ -113,4 +109,19 @@ Data.dump NC:0x6770 ;NC表示不经过缓存，数据是从物理内存physical 
 
 ![image-20220613224236044](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220613224236044.png)
 
-Trace32会自动将`A`扩展成 `ANSD`，将`Z`扩展成`ZSD`
+Trace32会根据当前处理器上下文自动将`A`扩展成 `ANSD`或者 `AZSD`，将`Z`扩展成`ZSD`:
+
+比如当前处理器处于secure模式下：
+
+![image-20220614222453342](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220614222453342.png)
+
+以下是Trace32自动进行的访问模式扩展：
+
+![image-20220614221623575](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220614221623575.png)
+
+![image-20220614221653560](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220614221653560.png)
+
+![image-20220614221851603](Trace32%E4%BD%BF%E7%94%A8%E6%95%99%E7%A8%8B-%E8%AE%BF%E9%97%AE%E7%B1%BB%E5%9E%8B%EF%BC%88Access%20Class%EF%BC%89.assets/image-20220614221851603.png)
+
+
+
